@@ -2,7 +2,7 @@
 
 In order to get Signal Dekstop running locally, you need to be able to connect it to a phone.
 
-When runining locally, it does not connect to production so connecting with your real account cannot work.
+When running locally, it does not connect to production so connecting with your real account cannot work.
 
 Instead you can do this, (from the contributing guide):
 
@@ -41,22 +41,91 @@ app.setAsDefaultProtocolClient("signalcaptcha");
 
 > [setAsDefaultProtocolClient] Sets the current executable as the default handler for a protocol (aka URI scheme). It allows you to integrate your app deeper into the operating system. Once registered, all links with your-protocol:// will be opened with the current executable. The whole link, including protocol, will be passed to your application as a parameter.
 
-### Registration does not work on Linux (?)
+### Registration with `setAsDefaultProtocolClient` does not work on Linux (?)
 
-In practice I have found that instead of the development version of Signal handling the redirect after captcha, my own production version is opened.
+In practice I have found that instead of the development version of Signal handling the redirect after captcha, my installed production version is opened instead.
 
-It seems as though the development version is failing to complete `setAsDefaultProtocolClient`.
+This means I cannot sign in at all.
+
+It seems as though `setAsDefaultProtocolClient` is not working.
 
 This may be [a linux problem](https://github.com/electron/electron/issues/40685).
 
-If I apply [the change mentioned in that ticket above](https://github.com/witcher112/electron-app-universal-protocol-client/blob/9645b1636ff90193a63dc678be2b6fa0e0184124/src/index.ts#L179) does actually work. I have managed to receive a text message in response and log in successfully.
+[The change mentioned in that ticket above](https://github.com/witcher112/electron-app-universal-protocol-client/blob/9645b1636ff90193a63dc678be2b6fa0e0184124/src/index.ts#L179) does actually work. I have managed to receive a text message in response and log in successfully.
+
+You can see the full listing [here](./assets/how-set-up-as-standalone-device-works/register-protocols.ts).
+
+The important part of the change is invoking `xdg-mime`.
+
+```shell
+xdg-mime default electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop x-scheme-handler/signalcaptcha
+```
+
+> The xdg-mime program can be used to query information about file types and to add descriptions for new file types. -- https://linux.die.net/man/1/xdg-mime
+
+> [where `default` means] Ask the desktop environment to make application the default application for opening files of type mimetype. An application can be made the default for several file types by specifying multiple mimetypes.
+
+This means the system is left with that registration:
+
+```shell
+$ xdg-mime query default x-scheme-handler/signalcaptcha
+electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop
+```
+
+You can see an entry for `x-scheme-handler/signalcaptcha` has been added to `~/.config/mimeapps.list`.
+
+```shell
+cat ~/.config/mimeapps.list | tail
+video/flv=vlc_vlc.desktop
+video/x-flc=vlc_vlc.desktop
+video/x-fli=vlc_vlc.desktop
+video/x-flv=vlc_vlc.desktop
+text/html=firefox_firefox.desktop
+x-scheme-handler/http=firefox_firefox.desktop
+x-scheme-handler/https=firefox_firefox.desktop
+x-scheme-handler/about=firefox_firefox.desktop
+x-scheme-handler/unknown=firefox_firefox.desktop
+x-scheme-handler/signalcaptcha=electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop
+
+```
 
 ## Tips
 
 ### Reset data for development version
 
 ```
-rm -r  ~/.config/Signal-development/
+
+rm -r ~/.config/Signal-development/
+
 ```
 
-After you do this you'll have to reconnect.
+After you do this you'll have to go through the 'Set Up as Standalone Device' agains next time you open the development version.
+
+### How to undo `xdg-mime default`
+
+One of the problems with updating the default handler is that is prevents my production version of Signal working.
+
+To reverse this, the only way I have found is to delete the entry from [mimeapps.list](https://wiki.archlinux.org/title/XDG_MIME_Applications).
+
+```shell
+cat ~/.config/mimeapps.list | tail
+video/flv=vlc_vlc.desktop
+video/x-flc=vlc_vlc.desktop
+video/x-fli=vlc_vlc.desktop
+video/x-flv=vlc_vlc.desktop
+text/html=firefox_firefox.desktop
+x-scheme-handler/http=firefox_firefox.desktop
+x-scheme-handler/https=firefox_firefox.desktop
+x-scheme-handler/about=firefox_firefox.desktop
+x-scheme-handler/unknown=firefox_firefox.desktop
+x-scheme-handler/signalcaptcha=electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop
+
+```
+
+This is the one we have added:
+
+```shell
+x-scheme-handler/signalcaptcha=electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop
+```
+
+If you remove that line then you revert back to the behaviour where it opens your installed Signal.
