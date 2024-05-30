@@ -1,6 +1,6 @@
 # How set up as standalone device works
 
-In order to get Signal Dekstop running locally, you need to be able to connect it to a phone.
+In order to get Signal Desktop running locally, you need to be able to connect it to a phone.
 
 When running locally, it does not connect to production so connecting with your real account cannot work.
 
@@ -87,6 +87,16 @@ x-scheme-handler/about=firefox_firefox.desktop
 x-scheme-handler/unknown=firefox_firefox.desktop
 x-scheme-handler/signalcaptcha=electron-app-universal-protocol-client-fd50893b0cb02764198c50102c3fc7c3.desktop
 
+```
+
+## Another workaround?
+
+[#6876](https://github.com/signalapp/Signal-Desktop/issues/6876#issuecomment-2107842792)
+
+You can supply a `signalcaptcha` url like this, too -- but that requires a second instance.
+
+```
+yarn start signalcaptcha://[captchalink]
 ```
 
 ## Tips
