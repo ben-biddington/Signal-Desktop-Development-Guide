@@ -1,4 +1,4 @@
-# How set up as standalone device works
+# How 'Set Up as Standalone Device' works
 
 In order to get Signal Desktop running locally, you need to be able to connect it to a phone.
 
