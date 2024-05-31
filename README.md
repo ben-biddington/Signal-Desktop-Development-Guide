@@ -6,4 +6,4 @@
 
 ## Contacts
 
-- [How contacts are loaded](./how/contacts-are-loaded.md)
+- [How contacts are loaded](./how/how-contacts-are-loaded.md)
