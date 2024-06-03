@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# ./cli demo ~/.config/Signal-test/databases/Databases.db ~/.config/Signal-development/config.json --build
+
+set -e
+
+if [[ "$@" =~ "--build" ]]; then
+  echo -e "\nBuilding"
+  npm run build
+  echo ""
+fi
+
+node dist/adapters/cli/index.js $@

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "adapters/*": ["src/adapters/*"],
+      "core/*": ["src/core/*"]
+    },
+    "outDir": "./dist",
+    "sourceMap": false,
+    "declaration": false,
+    "module": "commonJs",
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "ES5"
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules"]
+}

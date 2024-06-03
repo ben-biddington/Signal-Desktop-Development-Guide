@@ -1,281 +1,101 @@
 # How contacts are loaded
 
-I am choosing a small thing and trying to see if I can understand how it works.
+Contacts are never stored in the database, they are downloaded over a websocket and stored in-memory in the Electron window.
 
-For example, how does Signal load my contacts list?
+## Startup
 
-I would like to know its relationship to the locally-stored data in `~/.config/Signal-development/`.
+The stack trace:
 
-```shell
-tree ~/.config/Signal-development/
-/home/ben/.config/Signal-development/
-├── blob_storage
-│   └── bfa5c62e-ac28-4a2d-86be-6f4c2ebed547
-├── Cache
-│   └── Cache_Data
-│       ├── bd897ffc05e61f17_0
-│       ├── index
-│       └── index-dir
-│           └── the-real-index
-├── Code Cache
-│   ├── js
-│   │   ├── index
-│   │   └── index-dir
-│   │       └── the-real-index
-│   └── wasm
-│       ├── index
-│       └── index-dir
-│           └── the-real-index
-├── config.json
-├── Crashpad
-│   ├── attachments
-│   ├── client_id
-│   ├── completed
-│   ├── new
-│   ├── pending
-│   └── settings.dat
-├── databases
-│   ├── Databases.db
-│   └── Databases.db-journal
-├── DawnGraphiteCache
-│   ├── data_0
-│   ├── data_1
-│   ├── data_2
-│   ├── data_3
-│   └── index
-├── DawnWebGPUCache
-│   ├── data_0
-│   ├── data_1
-│   ├── data_2
-│   ├── data_3
-│   └── index
-├── Dictionaries
-│   └── en-US-10-1.bdic
-├── ephemeral.json
-├── GPUCache
-│   ├── data_0
-│   ├── data_1
-│   ├── data_2
-│   ├── data_3
-│   └── index
-├── IndexedDB
-│   └── file__0.indexeddb.leveldb
-│       ├── 000004.log
-│       ├── 000005.ldb
-│       ├── CURRENT
-│       ├── LOCK
-│       ├── LOG
-│       └── MANIFEST-000001
-├── Local Storage
-│   └── leveldb
-│       ├── 000003.log
-│       ├── CURRENT
-│       ├── LOCK
-│       ├── LOG
-│       ├── LOG.old
-│       └── MANIFEST-000001
-├── logs
-│   ├── app.log
-│   └── main.log
-├── Network Persistent State
-├── Preferences
-├── Session Storage
-│   ├── 000003.log
-│   ├── CURRENT
-│   ├── LOCK
-│   ├── LOG
-│   └── MANIFEST-000001
-├── Shared Dictionary
-│   ├── cache
-│   │   ├── index
-│   │   └── index-dir
-│   │       └── the-real-index
-│   ├── db
-│   └── db-journal
-├── SharedStorage
-├── sql
-│   └── db.sqlite
-├── temp
-├── Trust Tokens
-├── Trust Tokens-journal
-└── WebStorage
-    ├── QuotaManager
-    └── QuotaManager-journal
+- `connect` (ts/background.ts 1664)
+- `start` (ts/background.ts 1353)
+- `startApp` (ts/background.ts)
 
-```
-
-# How application is started
-
-The Electron window is created in `app/main.ts`.
-
-The Electron infrastructure creates Signal in `ts/windows/main/phase2-dependencies.ts`
+Part of `connect` is to call the following:
 
 ```ts
-// ts/windows/main/phase2-dependencies.ts
-window.Signal = setup({
-  Attachments,
-  getRegionCode: () => window.storage.get("regionCode"),
-  logger: log,
-  userDataPath,
-});
+// (ts/background.ts 1859)
+// Request configuration, block, GV1 sync messages, contacts
+// (only avatars and inboxPosition),and Storage Service sync.
+try {
+  await Promise.all([
+    singleProtoJobQueue.add(MessageSender.getRequestConfigurationSyncMessage()),
+    singleProtoJobQueue.add(MessageSender.getRequestBlockSyncMessage()),
+    runStorageService(),
+    singleProtoJobQueue.add(MessageSender.getRequestContactSyncMessage()),
+  ]);
+} catch (error) {
+  log.error(
+    "connect: Failed to request initial syncs",
+    Errors.toLogFormat(error)
+  );
+}
 ```
 
-Where `setup` comes from `ts/signal.ts`.
+The `getRequestContactSyncMessage` function is where contacts are downloaded.
+
+## getRequestContactSyncMessage
 
 ```ts
-// ts/signal.ts
-export const setup = (options: {
-  Attachments: AttachmentsModuleType;
-  getRegionCode: () => string | undefined;
-  logger: LoggerType;
-  userDataPath: string;
-}): SignalCoreType => {
-  const { Attachments, getRegionCode, logger, userDataPath } = options;
+// ts/textsecure/MessageReceiver.ts
+static getRequestContactSyncMessage(): SingleProtoJobData {
+    const myAci = window.textsecure.storage.user.getCheckedAci();
 
-  const Migrations = initializeMigrations({
-    getRegionCode,
-    Attachments,
-    Type: TypesAttachment,
-    VisualType: VisualAttachment,
-    logger,
-    userDataPath,
-  });
+    const request = new Proto.SyncMessage.Request();
+    request.type = Proto.SyncMessage.Request.Type.CONTACTS;
+    const syncMessage = this.createSyncMessage();
+    syncMessage.request = request;
+    const contentMessage = new Proto.Content();
+    contentMessage.syncMessage = syncMessage;
 
-  const Components = {
-    ConfirmationDialog,
-  };
+    const { ContentHint } = Proto.UnidentifiedSenderMessage.Message;
 
-  const Roots = {
-    createApp,
-    createSafetyNumberViewer,
-  };
-
-  const Services = {
-    backups: backupsService,
-    calling,
-    initializeGroupCredentialFetcher,
-    initializeNetworkObserver,
-    initializeUpdateListener,
-
-    // Testing
-    storage,
-  };
-
-  const State = {
-    Roots,
-  };
-
-  const Types = {
-    Message: MessageType,
-
-    // Mostly for debugging
-    Address,
-    QualifiedAddress,
-  };
-
-  return {
-    Components,
-    Crypto,
-    Curve,
-    // Note: used in test/index.html, and not type-checked!
-    conversationControllerStart,
-    Data,
-    Groups,
-    Migrations,
-    OS,
-    RemoteConfig,
-    Services,
-    State,
-    Types,
-  };
-};
-```
-
-And `createApp` comes from `ts/state/roots/createApp.tsx`.
-
-```ts
-// ts/state/roots/createApp.tsx
-// Copyright 2021 Signal Messenger, LLC
-// SPDX-License-Identifier: AGPL-3.0-only
-
-import type { ReactElement } from "react";
-import React from "react";
-import { Provider } from "react-redux";
-
-import type { Store } from "redux";
-
-import { SmartApp } from "../smart/App";
-import { SmartVoiceNotesPlaybackProvider } from "../smart/VoiceNotesPlaybackProvider";
-
-export const createApp = (store: Store): ReactElement => (
-  <Provider store={store}>
-    <SmartVoiceNotesPlaybackProvider>
-      <SmartApp />
-    </SmartVoiceNotesPlaybackProvider>
-  </Provider>
-);
-```
-
-`window.Signal` has type `SignalCoreType`:
-
-```ts
-export type SignalCoreType = {
-  AboutWindowProps?: AboutWindowPropsType;
-  Crypto: typeof Crypto;
-  Curve: typeof Curve;
-  Data: typeof Data;
-  DebugLogWindowProps?: DebugLogWindowPropsType;
-  Groups: typeof Groups;
-  PermissionsWindowProps?: PermissionsWindowPropsType;
-  RemoteConfig: typeof RemoteConfig;
-  ScreenShareWindowProps?: ScreenShareWindowPropsType;
-  Services: {
-    calling: CallingClass;
-    backups: BackupsService;
-    initializeGroupCredentialFetcher: () => Promise<void>;
-    initializeNetworkObserver: (network: ReduxActions["network"]) => void;
-    initializeUpdateListener: (updates: ReduxActions["updates"]) => void;
-    retryPlaceholders?: RetryPlaceholders;
-    lightSessionResetQueue?: PQueue;
-    storage: typeof StorageService;
-  };
-  SettingsWindowProps?: SettingsWindowPropsType;
-  Migrations: ReturnType<typeof initializeMigrations>;
-  Types: {
-    Message: typeof Message2;
-    Address: typeof Address;
-    QualifiedAddress: typeof QualifiedAddress;
-  };
-  Components: {
-    ConfirmationDialog: typeof ConfirmationDialog;
-  };
-  OS: OSType;
-  State: {
-    Roots: {
-      createApp: typeof createApp;
+    return {
+      contentHint: ContentHint.RESENDABLE,
+      serviceId: myAci,
+      isSyncMessage: true,
+      protoBase64: Bytes.toBase64(
+        Proto.Content.encode(contentMessage).finish()
+      ),
+      type: 'contactSyncRequest',
+      urgent: true,
     };
-  };
-  conversationControllerStart: () => void;
-  challengeHandler?: ChallengeHandler;
-};
+  }
 ```
 
-### Where does store come from?
+There is a listener registered for when this process returns
 
 ```ts
 // ts/background.ts
-render(
-  window.Signal.State.Roots.createApp(window.reduxStore),
-  document.getElementById("app-container")
+messageReceiver.addEventListener(
+  "contactSync",
+  queuedEventListener(onContactSync)
 );
 ```
 
-Where `window.reduxStore` comes from `ts/state/initializeRedux.ts`
+This results in `doContactSync` being called.
 
 ```ts
-// ts/state/initializeRedux.ts
-const store = createStore(initialState);
-window.reduxStore = store;
+async function doContactSync({
+  contacts,
+  complete: isFullSync,
+  receivedAtCounter,
+  sentAt,
+}: ContactSyncEvent): Promise<void> {
+  // ...
+}
 ```
 
-`createStore` from from `ts/state/createStore.ts`
+`ContactSyncEvent` I am guessing contains full contact info like name.
+
+```ts
+export class ContactSyncEvent extends Event {
+  constructor(
+    public readonly contacts: ReadonlyArray<ContactDetailsWithAvatar>,
+    public readonly complete: boolean,
+    public readonly receivedAtCounter: number,
+    public readonly sentAt: number
+  ) {
+    super("contactSync");
+  }
+}
+```
