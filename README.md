@@ -3,6 +3,7 @@
 ## Local development
 
 - [How 'Set Up as Standalone Device' works](./how/how-set-up-as-standalone-device-works.md)
+- [How to run on Linux](./how//how-to-run-on-linux.md)
 
 ## Contacts
 
@@ -10,7 +11,7 @@
 
 ## Conversations and messages
 
-- [How to connect to database](.how/how-to-connect-to-database.md)
+- [How to connect to database](./how/how-to-connect-to-database.md)
 
 ## Runtime configuration
 
@@ -51,3 +52,7 @@ For example, `production.json`:
   "updatesEnabled": true
 }
 ```
+
+# Questions
+
+- How does test data setup work? For example `ts/test-mock/messaging/reaction_test.ts`

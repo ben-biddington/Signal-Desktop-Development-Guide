@@ -32,7 +32,7 @@ If Signal is registered on your machine as a handler for any URL having protocol
 
 This is how Signal continues the 'Set Up as Standalone Device' workflow. The next step is to send an SMS with a code that can then be pasted back into to UI.
 
-This registration is done in `main.ts`.
+This registration is done in `app/main.ts`.
 
 ```ts
 // app/main.ts

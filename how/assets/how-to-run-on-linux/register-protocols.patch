@@ -1,0 +1,95 @@
+diff --git a/app/main.ts b/app/main.ts
+index ff7632e1b..838112948 100644
+--- a/app/main.ts
++++ b/app/main.ts
+@@ -119,6 +119,7 @@ import type { ParsedSignalRoute } from '../ts/util/signalRoutes';
+ import { parseSignalRoute } from '../ts/util/signalRoutes';
+ import * as dns from '../ts/util/dns';
+ import { ZoomFactorService } from '../ts/services/ZoomFactorService';
++import register from './register-protocols';
+ 
+ const animationSettings = systemPreferences.getAnimationSettings();
+ 
+@@ -2259,7 +2260,7 @@ app.on(
+ );
+ 
+ app.setAsDefaultProtocolClient('sgnl');
+-app.setAsDefaultProtocolClient('signalcaptcha');
++register(app, 'signalcaptcha', true);
+ 
+ ipc.on(
+   'set-badge',
+diff --git a/app/register-protocols.ts b/app/register-protocols.ts
+new file mode 100644
+index 000000000..44cf7ace2
+--- /dev/null
++++ b/app/register-protocols.ts
+@@ -0,0 +1,68 @@
++import path from "path";
++import os from "os";
++import crypto from "crypto";
++import fs from "fs";
++import { execSync } from "child_process";
++
++// https://github.com/witcher112/electron-app-universal-protocol-client/blob/9645b1636ff90193a63dc678be2b6fa0e0184124/src/index.ts#L179
++// See logs in the terminal output, not in Electron window.
++export default function register(
++  app: Electron.App,
++  protocol: string,
++  useHack: boolean = true
++): void {
++  const electronAppMainScriptPath = path.resolve(process.argv[1]);
++
++  if (useHack && os.platform() === "linux") {
++    try {
++      const electronAppDesktopFileName = `electron-app-universal-protocol-client-${crypto
++        .createHash("md5")
++        .update(`${process.execPath}${electronAppMainScriptPath}`)
++        .digest("hex")}.desktop`;
++
++      const electronAppDesktopFilePath = path.resolve(
++        app.getPath("home"),
++        ".local",
++        "share",
++        "applications",
++        electronAppDesktopFileName
++      );
++
++      fs.mkdirSync(path.dirname(electronAppDesktopFilePath), {
++        recursive: true,
++      });
++
++      fs.writeFileSync(
++        electronAppDesktopFilePath,
++        [
++          "[Desktop Entry]",
++          `Name=Electron (pid: ${process.pid})`,
++          `Exec=${process.execPath} ${electronAppMainScriptPath} %u`,
++          "Type=Application",
++          "Terminal=false",
++          `MimeType=x-scheme-handler/${protocol};`,
++        ].join("\n")
++      );
++
++      execSync(
++        `xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/${protocol}`
++      );
++
++      console.log(
++        `[${__filename}] xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/${protocol}`
++      );
++    } catch {
++      // ignore
++    }
++
++    console.log(
++      `[${__filename}] setAsDefaultProtocolClient ${protocol} ${process.execPath} ${electronAppMainScriptPath}`
++    );
++
++    app.setAsDefaultProtocolClient(protocol, process.execPath, [
++      electronAppMainScriptPath,
++    ]);
++  } else {
++    app.setAsDefaultProtocolClient(protocol, process.execPath, []);
++  }
++}
