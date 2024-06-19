@@ -1,4 +1,4 @@
-## Error: getaddrinfo ENOTFOUND create.signal.art
+## Error: getaddrinfo ENOTFOUND create.signal.art from `yarn generate`
 
 5-Jun-2024
 
@@ -57,7 +57,7 @@ rtt min/avg/max/mdev = 46.701/47.433/48.761/0.940 ms
 
 ```
 
-Can fix by editing:
+Can fix by editing `ts/scripts/generate-dns-fallback.ts`:
 
 ```diff
 ben@bang:~/sauce/Signal-Desktop$ git diff ts/scripts/generate-dns-fallback.ts

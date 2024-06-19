@@ -2,6 +2,66 @@
 
 ## Local development
 
+Local development means running Signal Desktop from local files, it can be started with something like:
+
+```shell
+yarn install --frozen-lockfile # Install and build dependencies (this will take a while)
+yarn generate                  # Generate final JS and CSS assets
+yarn start                     # Start Signal!
+```
+
+(Taken from `CONTRIBUTING.md`.)
+
+The first thing you'll have to to do is 'Set Up as Standalone Device' so that Signal Desktop thinks you're authenticated.
+
+You won't have any contacts, though, so nobody to message.
+
+### Setting up test data
+
+> you can use the information from your production install of Signal Desktop to populate your testing application! -- `CONTRIBUTING.md`.
+
+All that means is you can copy files from you production version to your test version:
+
+```
+~/.config/Signal -> ~/.config/Signal-development
+```
+
+This definitely means you now have messages, as they're stored in `~/.config/Signal/sql/db.sqlite`.
+
+As far as everything else, I'm not yet sure.
+
+### Unlinked -- Click to relink Signal Desktop to your mobile device to continue messaging.
+
+When I use my production files, I can see my contacts and conversations, but I also get the message:
+
+```shell
+Unlinked -- Click to relink Signal Desktop to your mobile device to continue messaging.
+```
+
+That message is used by `DialogRelink.tsx`.
+
+If you follow that, you end up at:
+
+```ts
+// ts/state/smart/LeftPane.tsx
+import { isDone as isRegistrationDone } from "../../util/registration";
+
+// ...
+
+const hasRelinkDialog = !isRegistrationDone();
+```
+
+Where `isRegistrationDone` looks like:
+
+```ts
+// ts/util/registration.ts
+export function isDone(): boolean {
+  return window.storage.get("chromiumRegistrationDone") === "";
+}
+```
+
+That message is shown when `window.storage.get("chromiumRegistrationDone")` is non-empty.
+
 - [How 'Set Up as Standalone Device' works](./how/how-set-up-as-standalone-device-works.md)
 - [How to run on Linux](./how//how-to-run-on-linux.md)
 
