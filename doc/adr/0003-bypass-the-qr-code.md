@@ -129,7 +129,36 @@ We'll need to replicate that behaviour.
 
 #### window.ConversationController.getOurConversation()
 
+Extracting the interface is straightforward. Replacing it at runtime is more difficult.
+
+We need to get into
+
+```ts
+// ts/ConversationController.ts
+export function start(): void {
+  const conversations = new window.Whisper.ConversationCollection();
+
+  window.ConversationController = new ConversationController(conversations);
+  window.getConversations = () => conversations;
+}
+```
+
+Now `getOurConversation` just needs to return a defined value.
+
 ### Try and make `Registration.everDone()` true
+
+You can just call this:
+
+```ts
+// ts/util/registration.ts
+markEverDone;
+```
+
+But how do we represent that?
+
+It needs to be awaited, where is the best place to put that?
+
+How about `window.Signal.init`?
 
 ## Consequences
 
@@ -196,13 +225,10 @@ await in startApp (async)
 (anonymous)	@	background.html:119
 ```
 
-One reason could be `User.getCheckedAci` is being called before `DevNullStorage.init`.
-
-It looks like we have two different instancs of `DevNullStorage`.
-
-See `flushAttachmentDownloadQueue`:
+`User.getCheckedAci` was returning undefined because we had two different instances of `DevNullStorage` in use.
 
 ```ts
+// flushAttachmentDownloadQueue
 log.info(
   "onEmpty flushAttachmentDownloadQueue saveMessages storage.initialised",
   // @ts-expect-error "ABC"
@@ -213,7 +239,7 @@ log.info(
 );
 ```
 
-Prints two differnet ids and `(1)` is not initialised.
+Prints two different ids and `(1)` is not initialised.
 
 This was because of
 
@@ -222,8 +248,8 @@ This was because of
 export const devNull: () => Ports = () => ({
   initializeGroupCredentialFetcher: DevNullInitializeGroupCredentialFetcher,
   remoteConfig: new DevNullRemoteConfig(),
-  textsecure: create(), // <---- here
+  textsecure: create(), // <---- this invokes `DevNullStorage` ctor
 });
 ```
 
-Anyone calling `devNull` would overwrite `window.storage`.
+Anyone calling `devNull` would overwrite `window.storage` because `DevNullStorage` was assigning `window.storage`.
