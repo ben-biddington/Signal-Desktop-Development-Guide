@@ -61,3 +61,19 @@ Where `createApp` from from `ts/state/roots/createApp.tsx`.
 
 1. `setupAppState` (`ts/background.ts`) -> `startApp` -> `window.storage.onready` -> `setupAppState` -> `initializeRedux`
 1. `initializeRedux` (`ts/state/initializeRedux.ts`)
+
+## ConversationController
+
+Initialised in `ts/windows/main/start.ts` by calling `start` in `ts/ConversationController.ts`.
+
+### SignalCoreType.conversationControllerStart not used (except for tests?)
+
+Note that `SignalCoreType.conversationControllerStart` is not called anywhere. There is this comment:
+
+```ts
+// ts/signal.ts
+// Note: used in test/index.html, and not type-checked!
+conversationControllerStart: _conversationControllerStart,
+```
+
+The real initialization is in `ts/windows/main/start.ts`.
