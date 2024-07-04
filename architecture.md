@@ -1,3 +1,23 @@
+# Architecture
+
+## Runtime dependencies (adapters)
+
+The [application is started](./how/how-application-is-started.md) with `startApp` in `ts/background.ts`.
+
+`startApp` is responssible for configuring the adapter used by the application running in the browser.
+
+The running application finds these dependencies on `window`.
+
+### `window.Signal` (`ts/signal.ts`)
+
+`window.Signal` is assigned in `ts/windows/main/phase2-dependencies.ts`.
+
+`window.Signal` provides access to ...
+
+#### `setup` (`ts/signal.ts`)
+
+`setup` configures all of the adapter implementations
+
 ## App
 
 ```shell
@@ -13,6 +33,14 @@ npx arkit -f ../Signal-Desktop/app/main.ts -d ../Signal-Desktop/app -o ./assets/
 ```
 
 <img src="./assets/architecture/electron-app-architecture.png" />
+
+## /app/preload.ts
+
+```shell
+npx arkit -f ../Signal-Desktop/ts/windows/main/preload.ts  -d ../Signal-Desktop/ts/windows/main -o ./assets/architecture/electron-preload.png
+```
+
+<img src="./assets/architecture/electron-preload.png" />
 
 ## /ts/background.ts
 

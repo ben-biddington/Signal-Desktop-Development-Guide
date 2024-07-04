@@ -1,6 +1,6 @@
 # How application is started
 
-`Signal-Desktop` is an Electron application which is started in deveopment mode by:
+`Signal-Desktop` is an Electron application which is started in development mode by:
 
 ```shell
 yarn start
@@ -12,15 +12,33 @@ Which just invokes electron:
 electron .
 ```
 
-- `electron .` executes `app/main.ts`
-- `app/main.ts` -> `import { app } from 'electron';`
-- `app/main.ts` -> `app.on('ready')`
-- `app/main.ts` `app.on('ready')` -> `createWindow`
-- `app/main.ts` `createWindow`
-- `app/main.ts` -> `createWindow` -> `mainWindow = new BrowserWindow(windowOptions);`
-- `app/main.ts` -> `createWindow` -> `mainWindow .loadURL('background.html')`
-- `background.html` -> `window.startApp();`
-- `ts/background.ts` -> `startApp`
+- [node] `electron .` executes `app/main.ts`
+- [node] `app/main.ts` -> `import { app } from 'electron';`
+- [node] `app/main.ts` -> `app.on('ready')`
+- [node] `app/main.ts` `app.on('ready')` -> `createWindow`
+- [node] `app/main.ts` `createWindow` configures preload script `ts/windows/main/preload.ts`
+- [node] [preload] `ts/windows/main/preload.ts` calls `ts/windows/main/start.ts`
+- [node] [preload] `ts/windows/main/start.ts` assigns and exposes window-scoped variables like `window.Signal`
+- [browser] `app/main.ts` -> `createWindow` -> `mainWindow = new BrowserWindow(windowOptions);`
+- [browser] `app/main.ts` -> `createWindow` -> `mainWindow .loadURL('background.html')`
+- [browser] `background.html` -> `window.startApp();`
+- [browser] `ts/background.ts` -> `startApp`
+
+The application can be thought of in two parts: the `electron` part and the browser part.
+
+## Preload
+
+`ts/windows/main/preload.ts` imports `ts/windows/main/start.ts`
+`ts/windows/main/start.ts` imports `ts/windows/main/phase2-dependencies.ts` which assigns `window.Signal` (among many other window-scoped variables).
+
+```ts
+window.Signal = setup({
+  Attachments,
+  getRegionCode: () => window.storage.get("regionCode"),
+  logger: log,
+  userDataPath,
+});
+```
 
 ## `app/main.ts`
 
@@ -41,11 +59,11 @@ It also:
 
 - Assigns `window.getAccountManager` (may be useful later)
 - Calls `initializeRedux`
-- Cals `window.getConversations`
+- Calls `window.getConversations`
 
 ## Where is the React part started?
 
-I think this happens in `ts/background.ts`:
+The `React` part is started in `ts/background.ts`:
 
 ```ts
 // Around line 1455

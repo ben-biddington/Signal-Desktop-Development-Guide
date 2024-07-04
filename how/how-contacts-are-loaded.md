@@ -2,6 +2,8 @@
 
 Contacts are never stored in the database, they are downloaded over a websocket and stored in-memory in the Electron window.
 
+Contacts are loaded when handled `ContactSyncEvent` invokes `doContactSync` (`ts/services/contactSync.ts`).
+
 ## Startup
 
 The stack trace:
@@ -85,7 +87,7 @@ async function doContactSync({
 }
 ```
 
-`ContactSyncEvent` I am guessing contains full contact info like name.
+`ContactSyncEvent` contains the list of contacts.
 
 ```ts
 export class ContactSyncEvent extends Event {
@@ -99,3 +101,24 @@ export class ContactSyncEvent extends Event {
   }
 }
 ```
+
+## `SingleProtoJobQueue`
+
+```ts
+// ts/jobs/singleProtoJobQueue.ts
+const { messaging } = window.textsecure;
+```
+
+## Allowing `doContactSync` to work
+
+This requires this to return something sensible:
+
+```ts
+const { conversation } = window.ConversationController.maybeMergeContacts({
+  e164: details.number,
+  aci: normalizeAci(details.aci, "contactSync.aci"),
+  reason: logId,
+});
+```
+
+At the moment this fails with `conversation.queueJob is not a function`.

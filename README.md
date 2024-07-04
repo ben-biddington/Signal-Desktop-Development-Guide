@@ -116,3 +116,9 @@ For example, `production.json`:
 # Questions
 
 - How does test data setup work? For example `ts/test-mock/messaging/reaction_test.ts`
+
+# Terminology
+
+- PNI: Phone Number Identity
+- ACI: Account Identity
+- e164: [defines a general format for international telephone numbers](https://en.wikipedia.org/wiki/E.164).
