@@ -117,6 +117,117 @@ And the only practical path is:
 
 So we have to `EmptyEvent` notification in `EventTargetMessageReceiver` ctor.
 
+### Problems with v2 groups?
+
+When you call `format` on `ts/models/conversation-model.ts` which calls `getConversation` which calls `format` again when group version is 2.
+
+```ts
+// ts/models/conversation-model.ts
+format(): ConversationType {
+    // eslint-disable-next-line no-console
+    console.log({ cachedProps: this.cachedProps });
+    if (this.cachedProps) {
+      return this.cachedProps;
+    }
+
+    const oldFormat = this.format;
+    // We don't want to crash or have an infinite loop if we loop back into this function
+    //   again. We'll log a warning and returned old cached props or throw an error.
+    this.format = () => {
+      if (!this.oldCachedProps) {
+        throw new Error(
+          `Conversation.format()/${this.idForLogging()} reentrant call, no old cached props!`
+        );
+      }
+
+      const { stack } = new Error('for stack');
+      log.warn(
+        `Conversation.format()/${this.idForLogging()} reentrant call! ${stack}`
+      );
+
+      return this.oldCachedProps;
+    };
+
+    try {
+      const { oldCachedProps } = this;
+      const newCachedProps = getConversation(this);
+
+      if (oldCachedProps && isShallowEqual(oldCachedProps, newCachedProps)) {
+        this.cachedProps = oldCachedProps;
+      } else {
+        this.cachedProps = newCachedProps;
+      }
+
+      return this.cachedProps;
+    } finally {
+      this.format = oldFormat;
+    }
+  }
+```
+
+It calls `getConversation`, which under certain calls `format` again when group version is 2.
+
+```ts
+// ts/util/getConversation.ts
+const sortedGroupMembers = isGroupV2(attributes)
+  ? getConversationMembers(attributes)
+      .sort((left, right) => sortConversationTitles(left, right))
+      .map((member) => window.ConversationController.get(member.id)?.format())
+      .filter(isNotNil)
+  : undefined;
+```
+
+This fails with:
+
+```shell
+Uncaught (in promise) Error: Conversation.format()/PNI:dc46c18a-39eb-4251-be05-d00c00e605f2 (cfcdd0fa-ca11-4044-b282-e69d98107f40) reentrant call, no old cached props!
+    at ConversationModel.format (VM113 preload.bundle.js:310150:19)
+    at VM113 preload.bundle.js:308247:211
+    at Array.map (<anonymous>)
+    at getConversation (VM113 preload.bundle.js:308247:149)
+    at ConversationModel.format (VM113 preload.bundle.js:310162:34)
+    at VM113 preload.bundle.js:316013:36
+    at arrayMap (VM113 preload.bundle.js:523:27)
+    at Function.map (VM113 preload.bundle.js:4101:18)
+    at Backbone3.Collection.map (VM113 preload.bundle.js:69387:34)
+    at getInitialState (VM113 preload.bundle.js:316012:50)
+format @ VM113 preload.bundle.js:310150
+(anonymous) @ VM113 preload.bundle.js:308247
+getConversation @ VM113 preload.bundle.js:308247
+format @ VM113 preload.bundle.js:310162
+(anonymous) @ VM113 preload.bundle.js:316013
+arrayMap @ VM113 preload.bundle.js:523
+map @ VM113 preload.bundle.js:4101
+(anonymous) @ VM113 preload.bundle.js:69387
+getInitialState @ VM113 preload.bundle.js:316012
+initializeRedux @ VM113 preload.bundle.js:316156
+setupAppState @ VM113 preload.bundle.js:318095
+(anonymous) @ VM113 preload.bundle.js:318065
+await in (anonymous) (async)
+(anonymous) @ VM113 preload.bundle.js:302566
+callListeners @ VM113 preload.bundle.js:302566
+fetch @ VM113 preload.bundle.js:302557
+startApp @ VM113 preload.bundle.js:318089
+await in startApp (async)
+(anonymous) @ background.html:119
+```
+
+The above error only seems to happen with `type: 'private'` messages:
+
+```ts
+{
+  id: 'cfcdd0fa-ca11-4044-b282-e69d98107f40',
+  type: 'private',
+  ...createNewGroup(),
+  version: 0,
+  addedBy: 'dc4098ad-dd0f-4250-a05b-796716d2b838',
+  description: 'A B C',
+  members: ['dc4098ad-dd0f-4250-a05b-796716d2b838'],
+  name: 'Note to self',
+  serviceId: 'PNI:dc46c18a-39eb-4251-be05-d00c00e605f2' as PniString,
+},
+```
+
 ## Consequences
 
 What becomes easier or more difficult to do and any risks introduced by the change that will need to be mitigated.

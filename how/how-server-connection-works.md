@@ -1,10 +1,55 @@
-# How websockets works
+# How server connection works
 
 Signal Desktop maintains a websocket connection and uses it to send messages and perform other tasks like syncing contacts.
 
-The abstraction for this is `WebAPIType` and it is exposed at `window.WebAPI`.
+The abstraction for this is `WebAPIType` and it is exposed at `window.textsecure.server`.
 
 `WebAPIType` is used by `MessageReceiver` and `MessageSender`.
+
+The application monitors the server connetion for events and takes action accordingly.
+
+The default implementation is initialized in `initialize` (`ts/textsecure/WebAPI.ts`).
+
+## `window.textsecure.server` assignment
+
+`window.WebAPI` is assigned to a `WebAPIConnectType` to be used later.
+
+```ts
+// ts/windows/main/phase2-dependencies.ts
+window.WebAPI = window.textsecure.WebAPI.initialize({
+  url: config.serverUrl,
+  storageUrl: config.storageUrl,
+  updatesUrl: config.updatesUrl,
+  resourcesUrl: config.resourcesUrl,
+  directoryConfig: config.directoryConfig,
+  cdnUrlObject: {
+    0: config.cdnUrl0,
+    2: config.cdnUrl2,
+    3: config.cdnUrl3,
+  },
+  certificateAuthority: config.certificateAuthority,
+  contentProxyUrl: config.contentProxyUrl,
+  proxyUrl: config.proxyUrl,
+  version: config.version,
+  disableIPv6: config.disableIPv6,
+});
+```
+
+```ts
+export type WebAPIConnectType = {
+  connect: (options: WebAPIConnectOptionsType) => WebAPIType;
+};
+```
+
+`WebAPIConnectType.connect` is used later to assign `window.server`:
+
+```ts
+// ts/background.ts
+server = window.WebAPI.connect({
+  ...window.textsecure.storage.user.getWebAPICredentials(),
+  hasStoriesDisabled: window.storage.get("hasStoriesDisabled", false),
+});
+```
 
 ## How connection is established
 
