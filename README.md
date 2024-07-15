@@ -30,6 +30,47 @@ This definitely means you now have messages, as they're stored in `~/.config/Sig
 
 As far as everything else, I'm not yet sure.
 
+### Where is production version installed?
+
+```shell
+whereis signal-desktop
+signal-desktop: /usr/bin/signal-desktop
+```
+
+### Startup options (does not work in production)
+
+Signal Desktop uses [node-config](https://github.com/node-config) which [allows overriding settings at runtime](https://github.com/node-config/node-config/wiki/Command-Line-Overrides).
+
+Override configuration with the `NODE_CONFIG` environment variable.
+
+For example, to show the developer console, overrride the `openDevTools` setting:
+
+```shell
+$ NODE_CONFIG='{"openDevTools": true, "ciMode": false}' /usr/bin/signal-desktop
+```
+
+See the full config options at `config/default.json`.
+
+This does not work in production, though, due to:
+
+```ts
+// app/config.ts
+if (getEnvironment() === Environment.Production) {
+  // harden production config against the local env
+  process.env.NODE_CONFIG = "";
+  process.env.NODE_CONFIG_STRICT_MODE = "";
+  process.env.HOSTNAME = "";
+  process.env.NODE_APP_INSTANCE = "";
+  process.env.ALLOW_CONFIG_MUTATIONS = "";
+  process.env.SUPPRESS_NO_CONFIG_WARNING = "";
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "";
+  process.env.SIGNAL_ENABLE_HTTP = "";
+  process.env.SIGNAL_CI_CONFIG = "";
+}
+```
+
+Something else to try is [`Electron` switches](https://www.electronjs.org/docs/latest/api/command-line-switches#--enable-loggingfile).
+
 ### Unlinked -- Click to relink Signal Desktop to your mobile device to continue messaging.
 
 When I use my production files, I can see my contacts and conversations, but I also get the message:
