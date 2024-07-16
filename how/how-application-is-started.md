@@ -218,3 +218,15 @@ Note that `SignalCoreType.conversationControllerStart` is not called anywhere. T
 // Note: used in test/index.html, and not type-checked!
 conversationControllerStart: _conversationControllerStart,
 ```
+
+## `window.reduxStore.getState().app.hasInitialLoadCompleted`
+
+`hasInitialLoadCompleted` is set by `ts/background.ts` using `window.reduxActions.app.initialLoadComplete();`.
+
+This is called from `onEmpty` which is **only** referenced in these places:
+
+- in response to the `empty` `messageReceiver` event
+- in `onOffline`
+- in `unlinkAndDisconnect`
+
+So what happens in practice must be that the server raises the `empty` event at some point.
