@@ -1,10 +1,12 @@
 # How contacts are loaded
 
-Contacts are never stored in the database, they are downloaded over a websocket and stored in-memory in the Electron window.
+Contacts are stored as conversations which means they **are** stored in the database.
+
+## Contact sync
 
 Contacts are loaded when handled `ContactSyncEvent` invokes `doContactSync` (`ts/services/contactSync.ts`).
 
-## Startup
+### Startup
 
 The stack trace:
 

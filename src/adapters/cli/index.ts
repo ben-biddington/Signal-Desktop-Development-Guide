@@ -3,7 +3,9 @@ import fs from "fs";
 import {
   conversation,
   conversations,
+  message,
   messages,
+  messagesInConversation,
 } from "adapters/signal/sqlite/database";
 import { demo } from "adapters/signal/sqlite/demo";
 import { formatRelative } from "date-fns";
@@ -47,7 +49,7 @@ cli
   .command("conversations <basePath>")
   .usage("./cli conversations ~/.config/Signal --limit 10 --build")
   .option("-v --verbose", "Print entire message", false)
-  .option("--limit <limit>", "Limit how many results", "1")
+  .option("--limit <limit>", "Limit how many results", "50")
   .action(async function (basePath: string, opts) {
     const databaseFilePath = path.join(basePath, "sql", "db.sqlite");
     const configFilePath = path.join(basePath, "config.json");
@@ -62,12 +64,11 @@ cli
       console.log(result);
     } else {
       console.log(
-        result.map(
-          (it) =>
-            `[${new Date(it.timestamp)}] ${it.id} ${it.lastMessage} -- ${
-              it.lastMessageAuthor
-            } -- ${it.profileName} ${it.profileFamilyName}`
-        )
+        result.map((it) => {
+          const name =
+            it.name || it.e164 || `${it.profileName} ${it.profileFamilyName}`;
+          return `conversationId="${it.id}", serviceId="${it.serviceId}" "${name}"`;
+        })
       );
     }
 
@@ -114,7 +115,6 @@ cli
 cli
   .command("conversation <basePath> <conversationId>")
   .description("Print detail about a single conversation")
-  .option("-v --verbose", "Print verbose json", false)
   .option("--limit <limit>", "Limit how many messages to return", "5")
   .action(async function (basePath: string, conversationId: string, opts) {
     const databaseFilePath = path.join(basePath, "sql", "db.sqlite");
@@ -127,13 +127,28 @@ cli
       { conversationId, verbose: opts.verbose, limit: opts.limit }
     );
 
-    if (opts.verbose) {
-      console.log(theConversation);
-    } else {
-      console.log(`Group: ${theConversation.conversation.name}`);
+    console.log(theConversation);
+  });
 
-      theConversation.messages.forEach((m) => print(m, basePath));
-    }
+//
+// ./cli message ~/.config/Signal 023b80f5-6a9a-4298-b47a-2958c8dae726 --build
+//
+cli
+  .command("message <basePath> <messageId>")
+  .description("Print detail about a single message")
+  .option("-v --verbose", "Print verbose json", false)
+  .action(async function (basePath: string, messageId: string, opts) {
+    const databaseFilePath = path.join(basePath, "sql", "db.sqlite");
+    const configFilePath = path.join(basePath, "config.json");
+
+    filesMustExist(databaseFilePath, configFilePath);
+
+    const theMessage = await message(
+      { databaseFilePath, decryptionKeyFilePath: configFilePath },
+      messageId
+    );
+
+    console.log(theMessage);
   });
 
 //

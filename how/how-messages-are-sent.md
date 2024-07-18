@@ -76,6 +76,113 @@ window.storage.onready(async () => {
 });
 ```
 
+## Message authoring
+
+Here is an incoming message which I have read directly from the database using
+
+```shell
+./cli message ~/.config/Signal 023b80f5-6a9a-4298-b47a-2958c8dae726 --build
+```
+
+```json
+{
+  "timestamp": 1717362273317,
+  "attachments": [],
+  "id": "023b80f5-6a9a-4298-b47a-2958c8dae726",
+  "conversationId": "ec3dff29-5c9e-439c-8586-a5d88f9b24cb",
+  "readStatus": 0,
+  "received_at": 1717113224077,
+  "received_at_ms": 1717452299315,
+  "seenStatus": 2,
+  "sent_at": 1717362273317,
+  "serverGuid": "d9620c78-017d-43f7-be78-4baf9f94455a",
+  "serverTimestamp": 1717362273630,
+  "sourceDevice": 1,
+  "sourceServiceId": "a37738b9-78f4-4c8c-aeb3-ac3880682bbd",
+  "type": "incoming",
+  "unidentifiedDeliveryReceived": true,
+  "schemaVersion": 11,
+  "body": "That’s woken him up!!!",
+  "bodyRanges": [],
+  "contact": [],
+  "decrypted_at": 1717452300053,
+  "errors": [],
+  "flags": 0,
+  "hasAttachments": 0,
+  "isViewOnce": false,
+  "mentionsMe": false,
+  "preview": [],
+  "requiredProtocolVersion": 0,
+  "supportedVersionAtReceive": 7
+}
+```
+
+The author of the message is identified by `sourceServiceId`.
+
+So you can find the conversation matching:
+
+```shell
+./cli conversation ~/.config/Signal a37738b9-78f4-4c8c-aeb3-ac3880682bbd --build
+```
+
+because we know contacts are stored in the conversation table.
+
+```json
+{
+  "conversation": {
+    "unreadCount": 0,
+    "verified": 0,
+    "messageCount": 13,
+    "sentMessageCount": 4,
+    "id": "b46a191d-4c08-4942-9870-433d34536ca8",
+    "serviceId": "a37738b9-78f4-4c8c-aeb3-ac3880682bbd",
+    "type": "private",
+    "version": 2,
+    "pni": "PNI:577759dc-3c29-4ff7-8e70-121e8d7ef64a",
+    "sealedSender": 1,
+    "color": "A110",
+    "profileKeyCredential": "...",
+    "profileKeyCredentialExpiration": 1721433600000,
+    "accessKey": "X66gD7PIbWUkQ+yQql330w==",
+    "profileKey": "b65xKD7UPFJ14RHgVOL7WTa0xEBgr2DHNB7cdPunCJc=",
+    "profileName": "Christina",
+    "profileFamilyName": "Ward",
+    "systemGivenName": "Christina",
+    "systemFamilyName": "Ward",
+    "messageRequestResponseType": 1,
+    "profileSharing": true,
+    "hideStory": false,
+    "isArchived": false,
+    "markedUnread": false,
+    "storageVersion": 742,
+    "muteExpiresAt": 0,
+    "sharingPhoneNumber": false,
+    "capabilities": { "paymentActivation": true, "deleteSync": false },
+    "lastProfile": {
+      "profileKey": "b65xKD7UPFJ14RHgVOL7WTa0xEBgr2DHNB7cdPunCJc=",
+      "profileKeyVersion": "0c6563329dc7f58efed54b569d3c43bc1f12b59a8712f25f288dde698e7a8873"
+    },
+    "name": "Christina Ward",
+    "inbox_position": 9,
+    "avatar": null,
+    "active_at": 1720135493117,
+    "unreadMentionsCount": 0,
+    "lastMessage": "Crikey!",
+    "lastMessageBodyRanges": [],
+    "lastMessageAuthor": "Christina",
+    "lastMessageStatus": null,
+    "lastMessageReceivedAt": 1717631837674,
+    "lastMessageReceivedAtMs": 1720135486846,
+    "timestamp": 1718165692207
+  },
+  "messages": []
+}
+```
+
+### How real application loads messages
+
+Messages are loaded by `ClientInterface` using methods like `getOlderMessagesByConversation` and `getNewerMessagesByConversation`.
+
 # Troubleshooting
 
 ## Failed to deserialize zkgroup::api::auth::auth_credential_with_pni::AuthCredentialWithPni
@@ -189,4 +296,33 @@ routineProfileRefresh/2: refreshed profile for dcd936c5-eeda-48c7-bea1-0a84cf33e
     at new Promise (<anonymous>)
     at PQueue26.add (/home/ben/sauce/Signal-Desktop/preload.bundle.js:16332:16)
     at routineProfileRefresh (/home/ben/sauce/Signal-Desktop/preload.bundle.js:313373:23)
+```
+
+## isDirectConversation 'Cannot read properties of undefined (reading 'type')
+
+conversation job queue: job 876e9f7f-f8f0-4e83-b621-ed18efd71c75 failed on attempt 8. TypeError: Cannot read properties of undefined (reading 'type')
+at isDirectConversation (/home/ben/sauce/Signal-Desktop/preload.bundle.js:7410:28)
+at getSendOptions (/home/ben/sauce/Signal-Desktop/preload.bundle.js:133603:8)
+at MessageModel.sendSyncMessage (/home/ben/sauce/Signal-Desktop/preload.bundle.js:307560:35)
+at MessageModel.send (/home/ben/sauce/Signal-Desktop/preload.bundle.js:307515:31)
+at async sendNormalMessage (/home/ben/sauce/Signal-Desktop/preload.bundle.js:142014:5)
+at async ConversationJobQueue.run (/home/ben/sauce/Signal-Desktop/preload.bundle.js:146830:15)
+at async /home/ben/sauce/Signal-Desktop/preload.bundle.js:132938:35
+at async run (/home/ben/sauce/Signal-Desktop/preload.bundle.js:16343:24)
+
+## Message marked failed
+
+![Message marked as failed](./assets/how-messages-are-sent/send-failed.png)
+
+This means `status` in `ts/components/conversation/MessageMetadata.tsx` has been supplied 'error'.
+
+`status` is not a field of `MessageAttributesType`, it is derived.
+
+`MessageAttributesType` has the `sendStateByConversationId` field to represent this:
+
+```ts
+sendStateByConversationId: {
+  '4dd6c9b3-c763-4d9f-a643-c8bd7f42a210': { status: SendStatus.Read },
+  'ec3dff29-5c9e-439c-8586-a5d88f9b24cb': { status: SendStatus.Read },
+},
 ```

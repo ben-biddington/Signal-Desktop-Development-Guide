@@ -12,9 +12,12 @@ export const conversation = (
     const conversation = db
       .prepare(
         `SELECT json FROM conversations 
-         WHERE id=?`
+         WHERE 
+          id=? 
+          OR
+          serviceId=?`
       )
-      .bind(conversationId)
+      .bind(conversationId, conversationId)
       .get();
 
     if (!conversation)
@@ -42,11 +45,7 @@ export const conversations = (
 
   return query(opts, (db) => {
     return db
-      .prepare(
-        `SELECT json FROM conversations 
-         WHERE active_at IS NOT NULL -- AND name IS NOT NULL 
-         ORDER BY active_at DESC LIMIT ?`
-      )
+      .prepare(`SELECT json FROM conversations LIMIT ?`)
       .bind(limit)
       .all()
       .map((it) => JSON.parse(it.json))
@@ -58,12 +57,12 @@ export const messages = (
   opts: SignalDatabaseOptions,
   filterOptions: MessageFilterOptions
 ): any[] => {
-  const { limit = 1, conversationId } = filterOptions;
+  const { limit = 1 } = filterOptions;
 
   return query(opts, (db) => {
     return db
       .prepare(
-        `SELECT json FROM messages  
+        `SELECT json FROM messages
          LIMIT ?`
       )
       .bind(limit)
@@ -93,11 +92,26 @@ export const messagesInConversation = (
     return q
       .all()
       .map((it) => {
-        // console.log(it);
+        console.log(it);
         return it;
       })
       .map((it) => JSON.parse(it.json))
       .sort(byEarliestDateFirst);
+  });
+};
+
+export const message = (
+  opts: SignalDatabaseOptions,
+  messageId: string
+): any[] => {
+  return query(opts, (db) => {
+    return db
+      .prepare(
+        `SELECT * FROM messages  
+         WHERE id=?`
+      )
+      .bind(messageId)
+      .all();
   });
 };
 
