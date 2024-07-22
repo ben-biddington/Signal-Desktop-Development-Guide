@@ -92,3 +92,11 @@ NODE_MODULE_VERSION 115. Please try re-compiling or re-installing
 the module (for instance, using `npm rebuild` or `npm install`).
 
 ```
+
+## Cannot use import statement outside a module
+
+I got this when running a single test and using incorrect file extension -- make sure you use `image_test.js` instead of `image_test.ts`.
+
+```shell
+npm run generate && mocha --require ts/test-mock/setup-ci.js ts/test-mock/messaging/image_test.ts
+```
