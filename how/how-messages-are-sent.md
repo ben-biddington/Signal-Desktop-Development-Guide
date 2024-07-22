@@ -1,19 +1,47 @@
 # How messages are sent
 
+![alt text](./assets//how-messages-are-sent/sending-messages.jpg)
+
+Sending a message has two parts: transmitting to server and recording in local database.
+
+The `sendMultiMediaMessage` action adds jobs to `ConversationJobQueue`, and `ConversationJobQueue` processes those jobs using `MessageSender`.
+
+`MessageSender` makes network calls to Signal server using [Protocol Buffers](https://protobuf.dev) over a web socket (`SocketManager`).
+
+> Protocol Buffers are language-neutral, platform-neutral extensible mechanisms for serializing structured data. -- [doc](https://protobuf.dev/#what-are-protocol-buffers)
+
+After sending to server they are saved to local database using `electron` (`ipcRenderer.invoke`).
+
 1. `sendMultiMediaMessage` (`ts/state/ducks/composer.ts`)
-1. `conversation.enqueueMessageForSend`
+1. `conversation.enqueueMessageForSend` (`ts/models/conversation-model.ts`)
+1. `conversationJobQueue.add`
+1. `MessageSender` (`ts/textsecure/SendMessage.ts`)
+1. `window.Signal.Data.saveMessage` (`ts/sql/Client.ts`)
+1. `ipcRenderer.invoke` (`ts/sql/channels.ts`)
 
-The thing that actually sends the message is `MessageSender` which is impemented with `WebAPIType` (`window.server`).
+## Implementation dependencies
 
-The queueing hopefully we can can keep.
+1. `window.ConversationController`
+1. `window.Signal.Data`
 
-## ConversationModel.enqueueMessageForSend
+The latter means direct dependency on `electron`.
+
+## `sendMultiMediaMessage`
+
+The handler for this action (`sendMultiMediaMessage` `ts/state/ducks/composer.ts`) performs these steps:
+
+1. Obtain the current conversation using `window.ConversationController.get(conversationId)`
+1. Collect additional messages options like attachments or quotes
+1. invoke `conversation.enqueueMessageForSend`
+
+So the actual message sending behaviour is controlled by an instance of `ConversationModel`.
 
 ```ts
 // ts/state/ducks/composer.ts
 const conversation = window.ConversationController.get(conversationId);
 
 // ...
+
 await conversation.enqueueMessageForSend(
   {
     body: message,
@@ -46,9 +74,280 @@ await conversation.enqueueMessageForSend(
 );
 ```
 
+## ConversationModel.enqueueMessageForSend
+
+`enqueueMessageForSend` assembles a message and queues a job using `ConversationJobQueue`.
+
+```ts
+// ts/models/conversation-model.ts
+await conversationJobQueue.add(
+  {
+    type: conversationQueueJobEnum.enum.NormalMessage,
+    conversationId: this.id,
+    messageId: message.id,
+    revision: this.get("revision"),
+  },
+  async (jobToInsert) => {
+    log.info(
+      `enqueueMessageForSend: saving message ${message.id} and job ${jobToInsert.id}`
+    );
+    await window.Signal.Data.saveMessage(message.attributes, {
+      jobToInsert,
+      forceSave: true,
+      ourAci: window.textsecure.storage.user.getCheckedAci(),
+    });
+  }
+);
+```
+
+The queued job has type `NormalMessage`.
+
+### ConversationJobQueue
+
+`ConversationJobQueue` uses the local database and communicates via `ipcRenderer.invoke`.
+
+`ConversationJobQueue` uses `JobQueueDatabaseStore` which uses `Database` which is implemented as `dataInterface` which comes from `ts/sql/Client.ts`.
+
+```ts
+export const conversationJobQueue = new ConversationJobQueue({
+  store: jobQueueDatabaseStore,
+  queueType: "conversation",
+  maxAttempts: MAX_ATTEMPTS,
+});
+```
+
+```ts
+export const jobQueueDatabaseStore = new JobQueueDatabaseStore(
+  databaseInterface
+);
+```
+
+```ts
+type Database = {
+  getJobsInQueue(queueType: string): Promise<Array<StoredJob>>;
+  insertJob(job: Readonly<StoredJob>): Promise<void>;
+  deleteJob(id: string): Promise<void>;
+};
+```
+
+```ts
+// ts/sql/Client.ts
+const dataInterface: ClientInterface = new Proxy(
+  {
+    ...clientExclusiveOverrides,
+  } as ClientInterface,
+  {
+    get(target, name) {
+      return async (...args: ReadonlyArray<unknown>) => {
+        if (has(target, name)) {
+          return get(target, name)(...args);
+        }
+
+        return get(channels, name)(...args);
+      };
+    },
+  }
+);
+```
+
+### Sending to server
+
+`ConversationJobQueue` processes jobs with type `NormalMessage` by invoking`ts/jobs/helpers/sendNormalMessage.ts`.
+
+`sendNormalMessage` uses `MessageSender` which is supplied by `ConversationJobQueue` from `window.textsecure`.
+
+`MessageSender` is implemented in terms of [Protocol Buffers](https://protobuf.dev/).
+
+```ts
+// ts/textsecure/SendMessage.ts
+import { SignalService as Proto } from "../protobuf";
+```
+
+```ts
+async sendMessageProto({
+    callback,
+    contentHint,
+    groupId,
+    options,
+    proto,
+    recipients,
+    sendLogCallback,
+    story,
+    timestamp,
+    urgent,
+  }: Readonly<{
+    callback: (result: CallbackResultType) => void;
+    contentHint: number;
+    groupId: string | undefined;
+    options?: SendOptionsType;
+    proto: Proto.Content | Proto.DataMessage | PlaintextContent;
+    recipients: ReadonlyArray<ServiceIdString>;
+    sendLogCallback?: SendLogCallbackType;
+    story?: boolean;
+    timestamp: number;
+    urgent: boolean;
+  }>): Promise<void> {
+    const accountManager = window.getAccountManager();
+    try {
+      if (accountManager.areKeysOutOfDate(ServiceIdKind.ACI)) {
+        log.warn(
+          `sendMessageProto/${timestamp}: Keys are out of date; updating before send`
+        );
+        await accountManager.maybeUpdateKeys(ServiceIdKind.ACI);
+        if (accountManager.areKeysOutOfDate(ServiceIdKind.ACI)) {
+          throw new Error('Keys still out of date after update');
+        }
+      }
+    } catch (error) {
+      // TODO: DESKTOP-5642
+      callback({
+        dataMessage: undefined,
+        editMessage: undefined,
+        errors: [error],
+      });
+      return;
+    }
+
+    const outgoing = new OutgoingMessage({
+      callback,
+      contentHint,
+      groupId,
+      serviceIds: recipients,
+      message: proto,
+      options,
+      sendLogCallback,
+      server: this.server,
+      story,
+      timestamp,
+      urgent,
+    });
+
+    recipients.forEach(serviceId => {
+      drop(
+        this.queueJobForServiceId(serviceId, async () =>
+          outgoing.sendToServiceId(serviceId)
+        )
+      );
+    });
+  }
+```
+
+Messages are sent by `OutgoingMessage.sendToServiceId`, which delegates to `OutgoingMessage.doSendMessage`.
+
+`OutgoingMessage.doSendMessage` encrypts messages and calls `OutgoingMessage.transmitMessage`.
+
+The network call is made by `sendMessages` in `ts/textsecure/WebAPI.ts`.
+
+```ts
+// ts/textsecure/WebAPI.ts
+async function sendMessages(
+  destination: ServiceIdString,
+  messages: ReadonlyArray<MessageType>,
+  timestamp: number,
+  {
+    online,
+    urgent = true,
+    story = false,
+  }: { online?: boolean; story?: boolean; urgent?: boolean }
+) {
+  const jsonData = {
+    messages,
+    timestamp,
+    online: Boolean(online),
+    urgent,
+  };
+
+  await _ajax({
+    call: "messages",
+    httpType: "PUT",
+    urlParameters: `/${destination}?story=${booleanToString(story)}`,
+    jsonData,
+    responseType: "json",
+  });
+}
+```
+
+`_ajax` is also defined in `ts/textsecure/WebAPI.ts`.
+
+The network call is performed by `SocketManager`:
+
+```ts
+// ts/textsecure/WebAPI.ts
+response = socketManager
+  ? await socketManager.fetch(url, fetchOptions)
+  : await fetch(url, fetchOptions);
+```
+
+`SocketManager` (`ts/textsecure/SocketManager.ts`) is implemented in terms of websockets.
+
+## Saving to database
+
+After a message has been sent over the network it is saved to the local database.
+
 ### window.Signal.Data.saveMessage
 
-We have a port for this already: `ClientInterface`.
+```ts
+// ts/sql/Client.ts
+async function saveMessage(
+  data: MessageType,
+  options: {
+    jobToInsert?: Readonly<StoredJob>;
+    forceSave?: boolean;
+    ourAci: AciString;
+  }
+): Promise<string> {
+  const id = await channels.saveMessage(_cleanMessageData(data), {
+    ...options,
+    jobToInsert: options.jobToInsert && formatJobForInsert(options.jobToInsert),
+  });
+
+  softAssert(isValidUuid(id), "saveMessage: messageId is not a UUID");
+
+  void updateExpiringMessagesService();
+  void tapToViewMessagesDeletionService.update();
+
+  return id;
+}
+```
+
+Anything that uses `channels` is using [ipcRenderer.invoke](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendererinvokechannel-args):
+
+```ts
+const channels: ServerInterface = new Proxy({} as ServerInterface, {
+  get(_target, name) {
+    return async (...args: ReadonlyArray<unknown>) =>
+      ipcInvoke(String(name), args);
+  },
+});
+```
+
+```ts
+// ts/sql/channels.ts
+export async function ipcInvoke<T>(
+  name: string,
+  args: ReadonlyArray<unknown>
+): Promise<T> {
+  const fnName = String(name);
+
+  if (shutdownPromise && name !== "close") {
+    throw new Error(
+      `Rejecting SQL channel job (${fnName}); application is shutting down`
+    );
+  }
+
+  activeJobCount += 1;
+  return createTaskWithTimeout(async () => {
+    try {
+      return await ipcRenderer.invoke(SQL_CHANNEL_KEY, name, ...args);
+    } finally {
+      activeJobCount -= 1;
+      if (activeJobCount === 0) {
+        resolveShutdown?.();
+      }
+    }
+  }, `SQL channel call (${fnName})`)();
+}
+```
 
 ## `sendNormalMessage`
 

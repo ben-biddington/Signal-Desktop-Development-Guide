@@ -154,6 +154,20 @@ For example, `production.json`:
 }
 ```
 
+## Debugging
+
+### Logs
+
+For tests find logs at something like: `/tmp/mock-signal-XXXXXXQZedmQ/logs/main.log`.
+
+### Where is `window.Signal`?
+
+When debugging, `window.Signal` is not available to the developer console. Why?
+
+`window.Signal` is assigned in `ts/windows/main/phase2-dependencies.ts` which is part of the `Electron` preload.
+
+This is because of [context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation).
+
 # Questions
 
 - How does test data setup work? For example `ts/test-mock/messaging/reaction_test.ts`

@@ -11,7 +11,7 @@ It is stored on disk somewhere like:
 And the key to decrypt it is nearby at:
 
 ```shell
-~/.config/Signal/config.json`
+~/.config/Signal/config.json
 ```
 
 ```shell
@@ -21,12 +21,31 @@ cat ~/.config/Signal/config.json
 }
 ```
 
+More recent version of `Signal-Dekstop` use an encrypted key instead:
+
+```shell
+cat /tmp/mock-signal-XXXXXXk02SeV/config.json
+{
+  "encryptedKey": "7631314afc42c5075443d2e4ae3672890e7948196269feddb1e4657d0a56ed2848ccacd9a761aadbe5ec4952b46f2f3bec7fc78ffb5836b591edd84beb1d48fa5e12f7251307903605ace6d04b2a2cd82dad34"
+}
+```
+
+There is a migration to encrypted keys in `getSQLKey` (`app/main.ts`).
+
+Currently my production version does not use an encrypted key.
+
+Encryption is provided directly by [`Electron safeStorage`](https://www.electronjs.org/docs/latest/api/safe-storage). You're supposed to be able to [turn this off by using the `--password-store="basic"` flag](https://www.electronjs.org/docs/latest/api/safe-storage) but it doesn't work for me.
+
 Note that when developing locally you'll have two other configurations:
 
 - ~/.config/Signal-development
 - ~/.config/Signal-test
 
 ## Examples
+
+These assume you have an unencrypted key in `~/.config/Signal/config.json`.
+
+These examples will not work with an encrypted key.
 
 The `./cli` executable shows how to connect and read from the database.
 

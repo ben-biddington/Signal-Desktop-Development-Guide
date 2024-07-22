@@ -5,13 +5,11 @@ import {
   conversations,
   message,
   messages,
-  messagesInConversation,
 } from "adapters/signal/sqlite/database";
 import { demo } from "adapters/signal/sqlite/demo";
 import { formatRelative } from "date-fns";
 import path from "path";
 import chalk from "chalk";
-import { WebSocket } from "ws";
 import { client as WebSocketClient } from "websocket";
 
 const cli = new Command();

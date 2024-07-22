@@ -81,3 +81,14 @@ And re-running:
 ```shell
 $ npm run build:esbuild && npm run build:dns-fallback
 ```
+
+## `better_sqlite3` ...was compiled against a different Node.js version
+
+```
+ Error: The module '/home/ben/sauce/Signal-Desktop/node_modules/@signalapp/better-sqlite3/build/Release/better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 125. This version of Node.js requires
+NODE_MODULE_VERSION 115. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+
+```
