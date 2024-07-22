@@ -1,5 +1,7 @@
 # Signal Desktop Development Guide
 
+Also [available as gitbook](https://bens-organization-24.gitbook.io/signal-desktop-development-guide/).
+
 ## Local development
 
 Local development means running Signal Desktop from local files, it can be started with something like:
