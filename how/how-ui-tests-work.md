@@ -12,6 +12,58 @@ The application is then running against a mock server.
 
 The tests are in `ts/test-mock`.
 
+## How `electron` is started
+
+Running `npm start` is equivalent to
+
+```shell
+electron app/main.js
+```
+
+Running `test-mock` starts with a different file:
+
+```shell
+electron ci.js
+```
+
+`ci.js` is very small.
+
+```ts
+const CI_CONFIG = JSON.parse(process.env.SIGNAL_CI_CONFIG || "");
+
+const config = require("./app/config").default;
+
+config.util.extendDeep(config, CI_CONFIG);
+
+require("./app/main");
+```
+
+All it is doing is generating configuration and invoking `./app/main`, which is exactly the same as what happens when you run `npm start`.
+
+### In detail
+
+Running `test-mock` does this:
+
+```shell
+mocha --require ts/test-mock/setup-ci.js ts/test-mock/**/*_test.js",
+```
+
+Where `ts/test-mock/setup-ci.js` is run before the test run and does this:
+
+```ts
+import { Bootstrap } from "./bootstrap";
+```
+
+#### Bootstrap.ts (`ts/test-mock/bootstrap.ts`)
+
+##### CI_SCRIPT (ci.js)
+
+`Bootstrap` uses this script to start the electron process
+
+#### App (`ts/test-mock/playwright.ts`)
+
+It is `App` that creates the `electron` window using `electron.launch`.
+
 ## How to run a single test
 
 ```shell
@@ -24,38 +76,10 @@ For example:
 mocha --require ts/test-mock/setup-ci.js ts/test-mock/messaging/edit_test.js
 ```
 
-## File uploads
+## How to see console logs
 
-## Errors
+For some reason these are not appearing in the developer tools, but they are being written the the debug log.
 
-### `test-electron`: Error: write EPIPE
+Select `View` > `Debug Log`, then you'll need to save it to disk to read it all.
 
-```shell
-npm run test-mock
-```
-
-I find that I can get lots and lots of these error dialogs showing.
-
-![alt text](./assets/how-ui-tests-work/unhandled-error.png)
-
-Every time I close it another one opens.
-
-```shell
-Unhandled Error
-
-Error: write EPIPE
-    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
-    at writeGeneric (node:internal/stream_base_commons:152:3)
-    at Socket._writeGeneric (node:net:953:11)
-    at Socket._write (node:net:965:8)
-    at writeOrBuffer (node:internal/streams/writable:564:12)
-    at _write (node:internal/streams/writable:493:10)
-    at Writable.write (node:internal/streams/writable:502:10)
-    at console.value (node:internal/console/constructor:311:16)
-    at console.error (node:internal/console/constructor:395:26)
-    at handleError ([REDACTED]/app/global_errors.js:45:13)
-```
-
-The error is being written by `app/global_errors.ts`.
-
-I did find that `htop` showed quite a few `electron` processes running, and killing the first one seemed to stop the windows.
+@todo: Find out how the above log gets populated. That text label comes from `icu:debugLog`.

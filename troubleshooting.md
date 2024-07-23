@@ -100,3 +100,63 @@ I got this when running a single test and using incorrect file extension -- make
 ```shell
 npm run generate && mocha --require ts/test-mock/setup-ci.js ts/test-mock/messaging/image_test.ts
 ```
+
+## Electron hangs in the background
+
+### `test-electron`: Error: write EPIPE
+
+```shell
+npm run test-electron
+```
+
+Sometimes when runining tests I find that I can get lots and lots of these error dialogs showing. I think possibly this happens if I quit the test run using `CTRL+C`.
+
+![Picture of error dialog reading "Error: write EPIPE"](./how/assets/how-ui-tests-work/unhandled-error.png)
+
+Every time I close it another one opens.
+
+```shell
+Unhandled Error
+
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:161:15)
+    at writeGeneric (node:internal/stream_base_commons:152:3)
+    at Socket._writeGeneric (node:net:953:11)
+    at Socket._write (node:net:965:8)
+    at writeOrBuffer (node:internal/streams/writable:564:12)
+    at _write (node:internal/streams/writable:493:10)
+    at Writable.write (node:internal/streams/writable:502:10)
+    at console.value (node:internal/console/constructor:311:16)
+    at console.error (node:internal/console/constructor:395:26)
+    at handleError ([REDACTED]/app/global_errors.js:45:13)
+```
+
+Solution is to find the `electron` process and kill it.
+
+This is how I did it the last time, I had to kill `chrome_crashpad_handler` first.
+
+```shell
+ben@bang:~/sauce/Signal-Desktop$ ps aux | grep electron
+ben        36800  3.5  1.8 1191054640 149696 ?   Sl   10:10   0:22 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron /home/ben/sauce/Signal-Desktop
+ben        36803  0.0  0.3 33803600 31808 ?      S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote --no-zygote-sandbox
+ben        36804  0.0  0.3 33803592 32128 ?      S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote
+ben        36806  0.0  0.1 33803592 8900 ?       S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote
+ben        36824  0.0  0.0 33567616 1272 ?       Sl   10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/chrome_crashpad_handler --monitor-self-annotation=ptype=crashpad-handler --no-rate-limit --database=/home/ben/.config/Signal-test/Crashpad --annotation=_productName=Signal --annotation=_version=7.19.0-alpha.1 --annotation=lsb-release=Ubuntu 22.04.4 LTS --annotation=plat=Linux --annotation=prod=Electron --annotation=ver=31.2.0 --initial-client-fd=43 --shared-client-connection
+ben        36878  0.0  0.0      0     0 ?        Z    10:10   0:00 [electron] <defunct>
+ben        37747  0.0  0.0      0     0 ?        Z    10:20   0:00 [electron] <defunct>
+ben        38210  0.0  0.0   9212  2328 pts/1    S+   10:21   0:00 grep --color=auto electron
+ben@bang:~/sauce/Signal-Desktop$ kill 36824
+ben@bang:~/sauce/Signal-Desktop$ ps aux | grep electron
+ben        36800  3.4  1.8 1191054640 149696 ?   Sl   10:10   0:22 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron /home/ben/sauce/Signal-Desktop
+ben        36803  0.0  0.3 33803600 31808 ?      S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote --no-zygote-sandbox
+ben        36804  0.0  0.3 33803592 32128 ?      S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote
+ben        36806  0.0  0.1 33803592 8900 ?       S    10:10   0:00 /home/ben/sauce/Signal-Desktop/node_modules/electron/dist/electron --type=zygote
+ben        36878  0.0  0.0      0     0 ?        Z    10:10   0:00 [electron] <defunct>
+ben        37747  0.0  0.0      0     0 ?        Z    10:20   0:00 [electron] <defunct>
+ben        38216  0.0  0.0   9212  2224 pts/1    S+   10:21   0:00 grep --color=auto electron
+ben@bang:~/sauce/Signal-Desktop$ kill 36800
+ben@bang:~/sauce/Signal-Desktop$ ps aux | grep electron
+ben        38227  0.0  0.0   9212  2288 pts/1    S+   10:22   0:00 grep --color=auto electron
+ben@bang:~/sauce/Signal-Desktop$
+
+```
