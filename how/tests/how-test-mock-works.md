@@ -1,4 +1,6 @@
-# How UI tests work
+# How `test-mock` works
+
+These tests are exercising the real application but with some parts replaced.
 
 ```shell
 npm run test-mock
@@ -76,6 +78,14 @@ For example:
 mocha --require ts/test-mock/setup-ci.js ts/test-mock/messaging/edit_test.js
 ```
 
+## How to run with `grep`
+
+```shell
+npm run test-mock -- --grep {pattern}
+```
+
+where `{pattern}` matches text in the name of the test, not file name.
+
 ## How to see console logs
 
 For some reason these are not appearing in the developer tools, but they are being written the the debug log.
@@ -83,3 +93,16 @@ For some reason these are not appearing in the developer tools, but they are bei
 Select `View` > `Debug Log`, then you'll need to save it to disk to read it all.
 
 @todo: Find out how the above log gets populated. That text label comes from `icu:debugLog`.
+
+## How to allow `assert.eventually`
+
+You need to do this:
+
+```ts
+// ts/test-mock/setup-ci.ts
+import { use } from "chai";
+import chaiAsPromised from "chai-as-promised";
+use(chaiAsPromised);
+```
+
+otherwise you get an error about `eventually` being undefined.

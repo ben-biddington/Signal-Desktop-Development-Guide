@@ -2,7 +2,9 @@
 
 `test-electron` runs tests inside an `electron` instance.
 
-Instead of starting the application with `background.html` it uses `test/index.html`.
+These tests are not for the UI per se, they are for things that require `electron` context.
+
+Instead of starting the application with `background.html` it uses `test/index.html`, which loads the tests.
 
 The `electron` instance is headless.
 
