@@ -39,7 +39,18 @@ whereis signal-desktop
 signal-desktop: /usr/bin/signal-desktop
 ```
 
-### Startup options (does not work in production)
+### Starting with developer tools
+
+(Yes this does work in production.)
+
+```shell
+// See: `defaultWebPrefs` in app/main.ts
+/usr/bin/signal-desktop --enable-dev-tools
+```
+
+[More switches](https://www.electronjs.org/docs/latest/api/command-line-switches).
+
+### How to override configuration (does not work in production)
 
 Signal Desktop uses [node-config](https://github.com/node-config) which [allows overriding settings at runtime](https://github.com/node-config/node-config/wiki/Command-Line-Overrides).
 

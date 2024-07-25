@@ -12,7 +12,7 @@ Which just invokes electron:
 electron .
 ```
 
-1. [node] `electron .` executes `app/main.ts`
+1. [node] `electron .` executes `app/main.ts` because `app/main.ts` is listed in `package.json` `main` field
 1. [node] `app/main.ts` -> `import { app } from 'electron';`
 1. [node] `app/main.ts` -> `app.on('ready')`
 1. [node] `app/main.ts` `app.on('ready')` -> `createWindow`
