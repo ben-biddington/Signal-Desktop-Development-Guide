@@ -13,6 +13,10 @@ npm test          # A good idea to make sure tests run first
 npm start         # Start Signal!
 ```
 
+To see something meaningful when running `npm start`, you'll need to use `Set Up as Standalone Device` and then copy you production data folder to your development folder.
+
+Once you've done that you'll something very close to your production version of `Signal-Desktop`.
+
 ### Set Up as Standalone Device
 
 The first thing you'll have to to do is ['Set Up as Standalone Device'](https://github.com/signalapp/Signal-Desktop/blob/main/CONTRIBUTING.md#setting-up-standalone) so that Signal Desktop thinks you're authenticated.
