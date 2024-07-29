@@ -44,7 +44,7 @@ signal-desktop: /usr/bin/signal-desktop
 (Yes this does work in production.)
 
 ```shell
-// See: `defaultWebPrefs` in app/main.ts
+# See: `defaultWebPrefs` in app/main.ts
 /usr/bin/signal-desktop --enable-dev-tools
 ```
 
@@ -81,43 +81,6 @@ if (getEnvironment() === Environment.Production) {
   process.env.SIGNAL_CI_CONFIG = "";
 }
 ```
-
-Something else to try is [`Electron` switches](https://www.electronjs.org/docs/latest/api/command-line-switches#--enable-loggingfile).
-
-### Unlinked -- Click to relink Signal Desktop to your mobile device to continue messaging.
-
-When I use my production files, I can see my contacts and conversations, but I also get the message:
-
-```shell
-Unlinked -- Click to relink Signal Desktop to your mobile device to continue messaging.
-```
-
-That message is used by `DialogRelink.tsx`.
-
-If you follow that, you end up at:
-
-```ts
-// ts/state/smart/LeftPane.tsx
-import { isDone as isRegistrationDone } from "../../util/registration";
-
-// ...
-
-const hasRelinkDialog = !isRegistrationDone();
-```
-
-Where `isRegistrationDone` looks like:
-
-```ts
-// ts/util/registration.ts
-export function isDone(): boolean {
-  return window.storage.get("chromiumRegistrationDone") === "";
-}
-```
-
-That message is shown when `window.storage.get("chromiumRegistrationDone")` is non-empty.
-
-- [How 'Set Up as Standalone Device' works](./how/how-set-up-as-standalone-device-works.md)
-- [How to run on Linux](./how//how-to-run-on-linux.md)
 
 ## Contacts
 
@@ -180,10 +143,6 @@ When debugging, `window.Signal` is not available to the developer console. Why?
 `window.Signal` is assigned in `ts/windows/main/phase2-dependencies.ts` which is part of the `Electron` preload.
 
 This is because of [context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation).
-
-# Questions
-
-- How does test data setup work? For example `ts/test-mock/messaging/reaction_test.ts`
 
 # Terminology
 

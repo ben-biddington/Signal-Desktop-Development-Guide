@@ -12,7 +12,7 @@ Runs tests in `ts/test-electron`. Tests are run inside an `electron` instance ho
 
 Tests have access to node js modules and browser APIs.
 
-````shell
+```shell
 npm run test-electron
 ```
 
@@ -20,4 +20,10 @@ npm run test-electron
 
 ```shell
 npm run test-electron -- --grep=Crypto
-````
+```
+
+## Writing to console
+
+```ts
+window.testUtilities.debug(msg);
+```

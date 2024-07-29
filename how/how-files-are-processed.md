@@ -113,6 +113,60 @@ I am unsure actually how `readFileSync` is working. This must be run under same 
 
 That means we can load the image with node js.
 
+## Image scaling
+
+In the case of `handleImageAttachment`, it scales images own so that they are under a certain file size:
+
+```ts
+// ts/util/handleImageAttachment.ts
+const {
+  contentType,
+  file: resizedBlob,
+  fileName,
+} = await autoScale({
+  contentType: isHeic(file.type, file.name)
+    ? IMAGE_JPEG
+    : stringToMIMEType(file.type),
+  fileName: file.name,
+  file: processedFile,
+  // We always store draft attachments as HQ
+  highQuality: true,
+});
+```
+
+Note: `highQuality: true`, that means the media quality level is set at `MediaQualityLevels.Three`:
+
+```ts
+// ts/util/scaleImageToLevel.ts
+const MEDIA_QUALITY_LEVEL_DATA = new Map([
+  [MediaQualityLevels.One, DEFAULT_LEVEL_DATA],
+  [
+    MediaQualityLevels.Two,
+    {
+      maxDimensions: 2048,
+      quality: 0.75,
+      size: MiB * 1.5,
+      thresholdSize: 0.3 * MiB,
+    },
+  ],
+  [
+    MediaQualityLevels.Three,
+    {
+      maxDimensions: 4096,
+      quality: 0.75,
+      size: MiB * 3,
+      thresholdSize: 0.4 * MiB,
+    },
+  ],
+]);
+```
+
+Which means all files with size larger than 400kB are resized.
+
+### The resize algorithm
+
+Iterate through `[3072, 2048, 1600, 1024, 768]`, each time
+
 # Issues
 
 ## [Transparent Png Doesn't Work (Even With Files)](https://github.com/signalapp/Signal-Desktop/issues/6928)

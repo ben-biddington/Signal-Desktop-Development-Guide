@@ -64,7 +64,7 @@ These tests are not for the UI per se, they are for things that require an `elec
 
 The test above is exercising `handleImageAttachment` which requires a real DOM.
 
-## How `test-electron` works
+## Starting
 
 `test-electron` spawns an electron process that differs in two ways:
 
@@ -331,3 +331,58 @@ if (getEnvironment() === Environment.Test) {
 ```
 
 `contextBridge.exposeInMainWorld` makes the function able to be called from `test/test.js`.
+
+### What `mocha.setup` does
+
+`window.testUtilities` is defined in `ts/windows/main/preload_test.ts`.
+
+It's here that command line options are translated to `setup`:
+
+```ts
+// ts/windows/main/preload_test.ts
+{
+  const { values } = parseArgs({
+    args: ipc.sendSync("ci:test-electron:getArgv"),
+    options: {
+      grep: {
+        type: "string",
+      },
+    },
+    strict: false,
+  });
+
+  if (typeof values.grep === "string") {
+    setup.grep = values.grep;
+  }
+}
+```
+
+Assigning `setup.grep` is equivalent to setting [mocha's `grep` option](https://mochajs.org/#-grep-regexp-g-regexp).
+
+This means the only supported test filter option is `grep`, so no `invert` or `fgrep`.
+
+```
+(https://mochajs.org/)
+
+Test Filters
+  -f, --fgrep   Only run tests containing this string                   [string]
+  -g, --grep    Only run tests matching this string or regexp           [string]
+  -i, --invert  Inverts --grep and --fgrep matches                     [boolean]
+```
+
+### Running a single directory or file
+
+This is currently not possible because the tests are selected like this:
+
+```ts
+// ts/windows/main/preload_test.ts
+prepareTests() {
+  console.log('Preparing tests...');
+  sync('../../test-{both,electron}/**/*_test.js', {
+    absolute: true,
+    cwd: __dirname,
+  }).forEach(require);
+},
+```
+
+A change would need to be made to feed in additional options.
