@@ -158,5 +158,32 @@ ben@bang:~/sauce/Signal-Desktop$ kill 36800
 ben@bang:~/sauce/Signal-Desktop$ ps aux | grep electron
 ben        38227  0.0  0.0   9212  2288 pts/1    S+   10:22   0:00 grep --color=auto electron
 ben@bang:~/sauce/Signal-Desktop$
-
 ```
+
+## The version of your database does not match this version of Signal
+
+```shell
+/usr/bin/signal-desktop --enable-dev-tools
+```
+
+```shell
+The version of your database does not match this version of Signal. Make sure you are opening the newest version of Signal on your computer.
+```
+
+And in the console:
+
+```shell
+MainSQL: Database startup error: DBVersionFromFutureError: SQL: User version is 1120 but the expected maximum version is 1090.
+```
+
+Updating does not work:
+
+```shell
+sudo apt install signal-desktop
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+signal-desktop is already the newest version (7.16.0).
+```
+
+Deleting the database does but then I have to relink and I have lost all messages.

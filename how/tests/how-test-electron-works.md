@@ -91,7 +91,7 @@ npm run test-electron
 - `test/index.html`
 - `test/test.js`
 
-`test-electron.js` starts an `electron` process with `spawn`.
+`test-electron.js` starts an `electron` process with `spawn` (See `ts/scripts/test-electron.ts`).
 
 > During execution, Electron will look for this script in the main field of the app's package.json config,
 > which you should have configured during the app scaffolding step. -- [doc](https://www.electronjs.org/docs/latest/tutorial/quick-start#run-the-main-process)

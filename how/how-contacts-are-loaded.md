@@ -2,6 +2,10 @@
 
 Contacts are stored as conversations which means they **are** stored in the database.
 
+## "Syncing contacts and groups"
+
+This is the message you see when you first link `Signal-Desktop`.
+
 ## Contact sync
 
 Contacts are loaded when handled `ContactSyncEvent` invokes `doContactSync` (`ts/services/contactSync.ts`).

@@ -11,6 +11,7 @@ import { formatRelative } from "date-fns";
 import path from "path";
 import chalk from "chalk";
 import { client as WebSocketClient } from "websocket";
+import { getSqlKey } from "adapters/signal/sqlite/getSqlKey";
 
 const cli = new Command();
 
@@ -29,9 +30,21 @@ const filesMustExist = (...files: string[]) => {
 };
 
 //
+// ./cli getSqlKey ~/sauce/Signal-Desktop ~/.config/Signal --build
+//
+cli
+  .command("getSqlKey <basePath> <configBasePath>")
+  .action(async (basePath: string, configBasePath: string) => {
+    const sqlKey = await getSqlKey({ basePath, configBasePath });
+
+    console.log({ sqlKey });
+  });
+
+//
 // ./cli demo ~/.config/Signal --build
 //
 cli.command("demo <basePath>").action(async (basePath: string) => {
+  const sqlKey = await getSqlKey({ basePath });
   const databaseFilePath = path.join(basePath, "sql", "db.sqlite");
   const configFilePath = path.join(basePath, "config.json");
 
