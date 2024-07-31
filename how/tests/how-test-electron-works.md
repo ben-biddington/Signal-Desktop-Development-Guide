@@ -386,3 +386,19 @@ prepareTests() {
 ```
 
 A change would need to be made to feed in additional options.
+
+### Why runing does not show window
+
+This is because the application is minimized to tray.
+
+You can mimic this by supplying the `--start-in-tray` flag.
+
+`(1)` When running `test-electron`, `NODE_ENV` is `test` (see `ts/scripts/test-electron.ts`) and so:
+
+```ts
+// app/main.ts
+const startInTray =
+  isTestEnvironment(getEnvironment()) || // <--------------------------------------- (1)
+  (await systemTraySettingCache.get()) ===
+    SystemTraySetting.MinimizeToAndStartInSystemTray;
+```

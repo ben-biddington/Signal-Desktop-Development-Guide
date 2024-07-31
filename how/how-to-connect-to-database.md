@@ -161,13 +161,34 @@ SqliteError: file is not a database
 
 ```
 
+## How to create a new blank, unencrypted database
+
+In the `Signal-Desktop` directory run:
+
+```shell
+rm -rf /tmp/signal-test-60a36fe8-8d1b-4520-b53e-b590c23ddfa7 && \
+NODE_ENV=development NODE_CONFIG='{"storagePath":"/tmp/signal-test-60a36fe8-8d1b-4520-b53e-b590c23ddfa7"}' \
+npm run start -- --password-store="basic"
+```
+
+You'll then observe that the database key is in plain text:
+
+```shell
+cat /tmp/signal-test-60a36fe8-8d1b-4520-b53e-b590c23ddfa7/config.json
+{
+  "key": "ec4f82e6646678188b02a5ffee830d1b5ce8da0f9ddd0daf6e62bb49c74f0d40"
+}
+```
+
+You can then proceed to read its database.
+
+```shell
+./cli demo /tmp/signal-test-60a36fe8-8d1b-4520-b53e-b590c23ddfa7 --build
+```
+
 # References
 
 - [Extracting Messages from Signal Desktop](https://www.tc3.dev/posts/2021-11-02-extract-messages-from-signal/)
 - [Query Signal Desktop messages locally from SQLite using JavaScript](https://vmois.dev/query-signal-desktop-messages-sqlite/)
 - [The process of creating a new, encrypted database is called “keying” the database.](https://www.zetetic.net/sqlcipher/sqlcipher-api/#key)
 - [signal-cli](https://github.com/AsamK/signal-cli)
-
-```
-
-```

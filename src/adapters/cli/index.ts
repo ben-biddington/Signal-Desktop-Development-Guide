@@ -12,6 +12,7 @@ import path from "path";
 import chalk from "chalk";
 import { client as WebSocketClient } from "websocket";
 import { getSqlKey } from "adapters/signal/sqlite/getSqlKey";
+import { createNewDatabase } from "adapters/signal/createNewDatabase";
 
 const cli = new Command();
 
@@ -44,7 +45,6 @@ cli
 // ./cli demo ~/.config/Signal --build
 //
 cli.command("demo <basePath>").action(async (basePath: string) => {
-  const sqlKey = await getSqlKey({ basePath });
   const databaseFilePath = path.join(basePath, "sql", "db.sqlite");
   const configFilePath = path.join(basePath, "config.json");
 
@@ -52,6 +52,19 @@ cli.command("demo <basePath>").action(async (basePath: string) => {
 
   await demo({ databaseFilePath, decryptionKeyFilePath: configFilePath });
 });
+
+//
+// ./cli createDatabase ~/.config/Signal --build --verbose
+//
+cli
+  .command("createDatabase <signalSourceDir>")
+  .option("-v --verbose", "Verbose logging", false)
+  .action(async (signalSourceDir: string, opts: { verbose: boolean }) => {
+    await createNewDatabase({
+      signalSourceDir: path.resolve(signalSourceDir),
+      verbose: opts.verbose,
+    });
+  });
 
 //
 // ./cli conversations ~/.config/Signal --limit 10 --build
