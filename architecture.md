@@ -33,7 +33,7 @@ Part of preload is loading `ts/background.ts` which is where `startApp` is defin
 
 ### Renderer process
 
-This is started when `background.html` is loaded into a `BrowserWindow` instanc.
+This is started when `background.html` is loaded into a `BrowserWindow` instance.
 
 The application is started by this script running in the browser:
 
@@ -47,7 +47,11 @@ Even though `startApp` is defined in `ts/background.ts` as part of preload, it h
 
 [`contextBridge`](https://www.electronjs.org/docs/latest/api/context-bridge) is a special `Electron` construct that proxies references to the main process.
 
-So when we invoke `window.startApp` from the browser, we're actually calling a special proxy.
+So when we invoke `window.startApp` from the browser, we're actually calling a special proxy that invokes the real function under the main process.
+
+It helps me to imagine it as using [`ipcRenderer.invoke`](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendererinvokechannel-args)
+
+> Send a message to the main process via channel and expect a result asynchronously. Arguments will be serialized with the Structured Clone Algorithm, just like window.postMessage, so prototype chains will not be included. Sending Functions, Promises, Symbols, WeakMaps, or WeakSets will throw an exception.
 
 ## Runtime dependencies (adapters)
 
